@@ -11,7 +11,7 @@ schema = StructType([ \
                      StructField("temperature", FloatType(), True)])
 
 # // Read the file as dataframe
-df = spark.read.schema(schema).csv("file:///SparkCourse/1800.csv")
+df = spark.read.schema(schema).csv("/home/pato/desenv/section3-SparkSQL/datasets")
 df.printSchema()
 
 # Filter out all but TMIN entries
@@ -21,19 +21,16 @@ minTemps = df.filter(df.measure_type == "TMIN")
 stationTemps = minTemps.select("stationID", "temperature")
 
 # Aggregate to find minimum temperature for every station
-minTempsByStation = stationTemps.groupBy("stationID").min("temperature")
+minTempsByStation = stationTemps.groupBy("stationID").agg(func.min("temperature").alias("temperatureC"))
 minTempsByStation.show()
 
 # Convert temperature to fahrenheit and sort the dataset
-minTempsByStationF = minTempsByStation.withColumn("temperature",
-                                                  func.round(func.col("min(temperature)") * 0.1 * (9.0 / 5.0) + 32.0, 2))\
-                                                  .select("stationID", "temperature").sort("temperature")
+minTempsByStationF = minTempsByStation.withColumn("temperatureF",
+                                                  func.round(func.col("temperatureC") * 0.1 * (9.0 / 5.0) + 32.0, 2))\
+                                                  .select("stationID", "temperatureC", "temperatureF").sort("temperatureC")
                                                   
 # Collect, format, and print the results
-results = minTempsByStationF.collect()
-
-for result in results:
-    print(result[0] + "\t{:.2f}F".format(result[1]))
+minTempsByStationF.show(30)
     
 spark.stop()
 
